@@ -491,8 +491,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
                 // Live Fetch: JAKIM Prayer Times & Manchester United Next Match
+        // Live Fetch: Accurate Today's JAKIM Solat & Manchester United Fixture
         new Thread(() -> {
-            // 1. Fetch JAKIM Waktu Solat (Zone SGR01 - Subang / Shah Alam)
+            // 1. Fetch JAKIM Waktu Solat (Zone SGR01)
             try {
                 URL solatUrl = new URL("https://api.waktusolat.app/v2/solat/SGR01");
                 HttpURLConnection conn = (HttpURLConnection) solatUrl.openConnection();
@@ -509,43 +510,47 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                     JSONObject json = new JSONObject(sb.toString());
                     JSONArray prayers = json.getJSONArray("prayers");
-                    if (prayers.length() > 0) {
-                        JSONObject today = prayers.getJSONObject(0);
 
-                        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
-                        timeFmt.setTimeZone(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+                    // Select today's date from the monthly array
+                    Calendar cal = Calendar.getInstance();
+                    int todayDay = cal.get(Calendar.DAY_OF_MONTH);
+                    int todayIndex = Math.max(0, Math.min(todayDay - 1, prayers.length() - 1));
 
-                        String fajr = timeFmt.format(new Date(today.getLong("fajr") * 1000L));
-                        String syuruk = timeFmt.format(new Date(today.getLong("syuruk") * 1000L));
-                        String dhuhr = timeFmt.format(new Date(today.getLong("dhuhr") * 1000L));
-                        String asr = timeFmt.format(new Date(today.getLong("asr") * 1000L));
-                        String maghrib = timeFmt.format(new Date(today.getLong("maghrib") * 1000L));
-                        String isha = timeFmt.format(new Date(today.getLong("isha") * 1000L));
+                    JSONObject today = prayers.getJSONObject(todayIndex);
 
-                        runOnUiThread(() -> {
-                            TextView tvSubuh = findViewById(R.id.tv_subuh);
-                            TextView tvSyuruk = findViewById(R.id.tv_syuruk);
-                            TextView tvZohor = findViewById(R.id.tv_zohor);
-                            TextView tvAsar = findViewById(R.id.tv_asar);
-                            TextView tvMaghrib = findViewById(R.id.tv_maghrib);
-                            TextView tvIsyak = findViewById(R.id.tv_isyak);
-                            TextView tvFooter = findViewById(R.id.tv_solat_footer);
+                    SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+                    timeFmt.setTimeZone(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
 
-                            if (tvSubuh != null) tvSubuh.setText(fajr);
-                            if (tvSyuruk != null) tvSyuruk.setText(syuruk);
-                            if (tvZohor != null) tvZohor.setText(dhuhr);
-                            if (tvAsar != null) tvAsar.setText(asr);
-                            if (tvMaghrib != null) tvMaghrib.setText(maghrib);
-                            if (tvIsyak != null) tvIsyak.setText(isha);
-                            if (tvFooter != null) tvFooter.setText("JAKIM e-Solat • SGR01 • Live");
-                        });
-                    }
+                    String fajr = timeFmt.format(new Date(today.getLong("fajr") * 1000L));
+                    String syuruk = timeFmt.format(new Date(today.getLong("syuruk") * 1000L));
+                    String dhuhr = timeFmt.format(new Date(today.getLong("dhuhr") * 1000L));
+                    String asr = timeFmt.format(new Date(today.getLong("asr") * 1000L));
+                    String maghrib = timeFmt.format(new Date(today.getLong("maghrib") * 1000L));
+                    String isha = timeFmt.format(new Date(today.getLong("isha") * 1000L));
+
+                    runOnUiThread(() -> {
+                        TextView tvSubuh = findViewById(R.id.tv_subuh);
+                        TextView tvSyuruk = findViewById(R.id.tv_syuruk);
+                        TextView tvZohor = findViewById(R.id.tv_zohor);
+                        TextView tvAsar = findViewById(R.id.tv_asar);
+                        TextView tvMaghrib = findViewById(R.id.tv_maghrib);
+                        TextView tvIsyak = findViewById(R.id.tv_isyak);
+                        TextView tvFooter = findViewById(R.id.tv_solat_footer);
+
+                        if (tvSubuh != null) tvSubuh.setText(fajr);
+                        if (tvSyuruk != null) tvSyuruk.setText(syuruk);
+                        if (tvZohor != null) tvZohor.setText(dhuhr);
+                        if (tvAsar != null) tvAsar.setText(asr);
+                        if (tvMaghrib != null) tvMaghrib.setText(maghrib);
+                        if (tvIsyak != null) tvIsyak.setText(isha);
+                        if (tvFooter != null) tvFooter.setText("JAKIM e-Solat • SGR01 • Hari ini");
+                    });
                 }
             } catch (Exception ignored) {}
 
-            // 2. Fetch Manchester United Next Match (TheSportsDB API)
+            // 2. Fetch Manchester United Next Match (Free key 123)
             try {
-                URL muUrl = new URL("https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=133612");
+                URL muUrl = new URL("https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=133612");
                 HttpURLConnection conn = (HttpURLConnection) muUrl.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(6000);
@@ -562,12 +567,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     JSONArray events = json.optJSONArray("events");
                     if (events != null && events.length() > 0) {
                         JSONObject nextMatch = events.getJSONObject(0);
-                        String event = nextMatch.getString("strEvent"); // e.g. "Manchester United vs ..."
+                        String event = nextMatch.getString("strEvent");
                         String league = nextMatch.getString("strLeague");
                         String dateStr = nextMatch.getString("dateEvent");
-                        String timeStr = nextMatch.optString("strTime", "00:00:00");
+                        String timeStr = nextMatch.optString("strTime", "");
 
-                        // Extract opponent if United is part of the name
                         String fixtureDisplay = event;
                         if (event.contains("Manchester United vs")) {
                             fixtureDisplay = "vs " + event.replace("Manchester United vs", "").trim();
@@ -576,6 +580,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
 
                         final String finalFixture = fixtureDisplay;
+                        final String finalTime = dateStr + (timeStr.isEmpty() ? "" : " • " + timeStr);
                         runOnUiThread(() -> {
                             TextView tvFixture = findViewById(R.id.tv_match_fixture);
                             TextView tvComp = findViewById(R.id.tv_match_comp);
@@ -583,12 +588,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                             if (tvFixture != null) tvFixture.setText(finalFixture);
                             if (tvComp != null) tvComp.setText(league);
-                            if (tvTime != null) tvTime.setText(dateStr + " • " + timeStr + " UTC");
+                            if (tvTime != null) tvTime.setText(finalTime);
                         });
                     }
                 }
             } catch (Exception ignored) {}
         }).start();
+                
         
     }
 
