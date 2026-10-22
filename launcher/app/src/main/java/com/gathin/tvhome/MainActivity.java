@@ -549,6 +549,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } catch (Exception ignored) {}
 
             // 2. Fetch Manchester United Next Match (Free key 123)
+                        // 2. Fetch Manchester United Next Match (Formatted for MYT)
             try {
                 URL muUrl = new URL("https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=133612");
                 HttpURLConnection conn = (HttpURLConnection) muUrl.openConnection();
@@ -567,27 +568,45 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     JSONArray events = json.optJSONArray("events");
                     if (events != null && events.length() > 0) {
                         JSONObject nextMatch = events.getJSONObject(0);
-                        String event = nextMatch.getString("strEvent");
-                        String league = nextMatch.getString("strLeague");
-                        String dateStr = nextMatch.getString("dateEvent");
-                        String timeStr = nextMatch.optString("strTime", "");
+                        String homeTeam = nextMatch.optString("strHomeTeam", "");
+                        String awayTeam = nextMatch.optString("strAwayTeam", "");
+                        String league = nextMatch.optString("strLeague", "Premier League");
+                        String dateEvent = nextMatch.optString("dateEvent", ""); // e.g. "2026-10-25"
+                        String strTime = nextMatch.optString("strTime", "00:00:00"); // e.g. "16:30:00"
 
-                        String fixtureDisplay = event;
-                        if (event.contains("Manchester United vs")) {
-                            fixtureDisplay = "vs " + event.replace("Manchester United vs", "").trim();
-                        } else if (event.contains("vs Manchester United")) {
-                            fixtureDisplay = "@ " + event.replace("vs Manchester United", "").trim();
-                        }
+                        // 1. Determine Home vs Away & Fixture text
+                        boolean isHome = homeTeam.toLowerCase(Locale.ROOT).contains("manchester united");
+                        String venue = isHome ? "Home" : "Away";
+                        String opponent = isHome ? awayTeam : homeTeam;
+                        String fixtureText = (isHome ? "vs " : "@ ") + opponent;
+                        String subText = league + " • " + venue;
 
-                        final String finalFixture = fixtureDisplay;
-                        final String finalTime = dateStr + (timeStr.isEmpty() ? "" : " • " + timeStr);
+                        // 2. Convert UTC Date & Time to Malaysian Time (MYT - UTC+8)
+                        String formattedDateTime = dateEvent;
+                        try {
+                            String rawIso = dateEvent + " " + (strTime.length() >= 5 ? strTime.substring(0, 5) : "00:00");
+                            SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
+                            parser.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+                            Date matchDate = parser.parse(rawIso);
+                            if (matchDate != null) {
+                                SimpleDateFormat mytFormatter = new SimpleDateFormat("EEE d MMM • h:mm a 'MYT'", Locale.ENGLISH);
+                                mytFormatter.setTimeZone(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+                                formattedDateTime = mytFormatter.format(matchDate);
+                            }
+                        } catch (Exception ignored) {}
+
+                        final String finalFixture = fixtureText;
+                        final String finalSub = subText;
+                        final String finalTime = formattedDateTime;
+
                         runOnUiThread(() -> {
                             TextView tvFixture = findViewById(R.id.tv_match_fixture);
                             TextView tvComp = findViewById(R.id.tv_match_comp);
                             TextView tvTime = findViewById(R.id.tv_match_time);
 
                             if (tvFixture != null) tvFixture.setText(finalFixture);
-                            if (tvComp != null) tvComp.setText(league);
+                            if (tvComp != null) tvComp.setText(finalSub);
                             if (tvTime != null) tvTime.setText(finalTime);
                         });
                     }
