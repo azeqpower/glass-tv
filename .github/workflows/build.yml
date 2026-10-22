@@ -1,13 +1,15 @@
 name: Build Glass TV
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -16,20 +18,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Make Gradle executable
         run: chmod +x launcher/gradlew
 
       - name: Build Launcher APK
         run: |
           cd launcher
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: glass-tv-apk
-          path: 'launcher/**/build/outputs/apk/**/*.apk'
+          path: launcher/app/build/outputs/apk/release/app-release.apk
           
