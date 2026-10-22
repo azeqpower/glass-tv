@@ -69,6 +69,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+
 /**
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
  */
@@ -478,6 +489,107 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                     .build(), vpnCallback);
         }
+
+                // Live Fetch: JAKIM Prayer Times & Manchester United Next Match
+        new Thread(() -> {
+            // 1. Fetch JAKIM Waktu Solat (Zone SGR01 - Subang / Shah Alam)
+            try {
+                URL solatUrl = new URL("https://api.waktusolat.app/v2/solat/SGR01");
+                HttpURLConnection conn = (HttpURLConnection) solatUrl.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
+
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+
+                    JSONObject json = new JSONObject(sb.toString());
+                    JSONArray prayers = json.getJSONArray("prayers");
+                    if (prayers.length() > 0) {
+                        JSONObject today = prayers.getJSONObject(0);
+
+                        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+                        timeFmt.setTimeZone(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+
+                        String fajr = timeFmt.format(new Date(today.getLong("fajr") * 1000L));
+                        String syuruk = timeFmt.format(new Date(today.getLong("syuruk") * 1000L));
+                        String dhuhr = timeFmt.format(new Date(today.getLong("dhuhr") * 1000L));
+                        String asr = timeFmt.format(new Date(today.getLong("asr") * 1000L));
+                        String maghrib = timeFmt.format(new Date(today.getLong("maghrib") * 1000L));
+                        String isha = timeFmt.format(new Date(today.getLong("isha") * 1000L));
+
+                        runOnUiThread(() -> {
+                            TextView tvSubuh = findViewById(R.id.tv_subuh);
+                            TextView tvSyuruk = findViewById(R.id.tv_syuruk);
+                            TextView tvZohor = findViewById(R.id.tv_zohor);
+                            TextView tvAsar = findViewById(R.id.tv_asar);
+                            TextView tvMaghrib = findViewById(R.id.tv_maghrib);
+                            TextView tvIsyak = findViewById(R.id.tv_isyak);
+                            TextView tvFooter = findViewById(R.id.tv_solat_footer);
+
+                            if (tvSubuh != null) tvSubuh.setText(fajr);
+                            if (tvSyuruk != null) tvSyuruk.setText(syuruk);
+                            if (tvZohor != null) tvZohor.setText(dhuhr);
+                            if (tvAsar != null) tvAsar.setText(asr);
+                            if (tvMaghrib != null) tvMaghrib.setText(maghrib);
+                            if (tvIsyak != null) tvIsyak.setText(isha);
+                            if (tvFooter != null) tvFooter.setText("JAKIM e-Solat • SGR01 • Live");
+                        });
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // 2. Fetch Manchester United Next Match (TheSportsDB API)
+            try {
+                URL muUrl = new URL("https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=133612");
+                HttpURLConnection conn = (HttpURLConnection) muUrl.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
+
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+
+                    JSONObject json = new JSONObject(sb.toString());
+                    JSONArray events = json.optJSONArray("events");
+                    if (events != null && events.length() > 0) {
+                        JSONObject nextMatch = events.getJSONObject(0);
+                        String event = nextMatch.getString("strEvent"); // e.g. "Manchester United vs ..."
+                        String league = nextMatch.getString("strLeague");
+                        String dateStr = nextMatch.getString("dateEvent");
+                        String timeStr = nextMatch.optString("strTime", "00:00:00");
+
+                        // Extract opponent if United is part of the name
+                        String fixtureDisplay = event;
+                        if (event.contains("Manchester United vs")) {
+                            fixtureDisplay = "vs " + event.replace("Manchester United vs", "").trim();
+                        } else if (event.contains("vs Manchester United")) {
+                            fixtureDisplay = "@ " + event.replace("vs Manchester United", "").trim();
+                        }
+
+                        final String finalFixture = fixtureDisplay;
+                        runOnUiThread(() -> {
+                            TextView tvFixture = findViewById(R.id.tv_match_fixture);
+                            TextView tvComp = findViewById(R.id.tv_match_comp);
+                            TextView tvTime = findViewById(R.id.tv_match_time);
+
+                            if (tvFixture != null) tvFixture.setText(finalFixture);
+                            if (tvComp != null) tvComp.setText(league);
+                            if (tvTime != null) tvTime.setText(dateStr + " • " + timeStr + " UTC");
+                        });
+                    }
+                }
+            } catch (Exception ignored) {}
+        }).start();
+        
     }
 
     /**
