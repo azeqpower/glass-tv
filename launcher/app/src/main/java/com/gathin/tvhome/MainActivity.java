@@ -443,6 +443,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         fetchLiveCards();
+
+        // Android hides the Wi-Fi name (SSID) unless location permission is granted.
+        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 42);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, @NonNull String[] perms, @NonNull int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        updateWifiLabel();
     }
 
     private void fetchLiveCards() {
@@ -911,10 +923,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         View item = (View) card.getParent();
 
-        // 1. Update focused app title on screen
+        // 1. Update focused app title on screen, tinted with the app's colour
         TextView focusedTitle = findViewById(R.id.tv_focused_app_title);
         if (focusedTitle != null && adapter != null) {
             focusedTitle.setText(adapter.labelAt(position));
+            int c = adapter.ambientColorAt(position);
+            int cr = Color.red(c), cg = Color.green(c), cb = Color.blue(c);
+            focusedTitle.setTextColor(Color.rgb(
+                    cr + (int) ((255 - cr) * 0.35f),
+                    cg + (int) ((255 - cg) * 0.35f),
+                    cb + (int) ((255 - cb) * 0.35f)));
             focusedTitle.animate().cancel();
             focusedTitle.setAlpha(0f);
             focusedTitle.animate().alpha(1f).setDuration(150).start();
@@ -1160,9 +1178,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setShader(new RadialGradient(
-                w * 0.32f, h * 0.42f, w * 0.62f,
-                new int[]{0x5CFFFFFF, 0x26FFFFFF, 0x00FFFFFF},
-                new float[]{0f, 0.45f, 1f},
+                w * 0.5f, h * 0.78f, w * 0.75f,
+                new int[]{0xA6FFFFFF, 0x59FFFFFF, 0x00FFFFFF},
+                new float[]{0f, 0.5f, 1f},
                 Shader.TileMode.CLAMP));
         new Canvas(bmp).drawRect(0, 0, w, h, paint);
         ambientShape = bmp;
