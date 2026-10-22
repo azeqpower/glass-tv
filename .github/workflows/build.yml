@@ -1,8 +1,6 @@
 name: Build Glass TV
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
