@@ -927,12 +927,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView focusedTitle = findViewById(R.id.tv_focused_app_title);
         if (focusedTitle != null && adapter != null) {
             focusedTitle.setText(adapter.labelAt(position));
-            int c = adapter.ambientColorAt(position);
-            int cr = Color.red(c), cg = Color.green(c), cb = Color.blue(c);
-            focusedTitle.setTextColor(Color.rgb(
-                    cr + (int) ((255 - cr) * 0.35f),
-                    cg + (int) ((255 - cg) * 0.35f),
-                    cb + (int) ((255 - cb) * 0.35f)));
             focusedTitle.animate().cancel();
             focusedTitle.setAlpha(0f);
             focusedTitle.animate().alpha(1f).setDuration(150).start();
