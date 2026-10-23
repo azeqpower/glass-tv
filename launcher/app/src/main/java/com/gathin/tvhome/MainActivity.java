@@ -1172,8 +1172,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setShader(new RadialGradient(
-                w * 0.5f, h * 0.78f, w * 0.75f,
-                new int[]{0xA6FFFFFF, 0x59FFFFFF, 0x00FFFFFF},
+                w * 0.5f, h * 0.48f, w * 0.7f,
+                new int[]{0xB3FFFFFF, 0x66FFFFFF, 0x00FFFFFF},
                 new float[]{0f, 0.5f, 1f},
                 Shader.TileMode.CLAMP));
         new Canvas(bmp).drawRect(0, 0, w, h, paint);
